@@ -2,16 +2,15 @@ name: Radio Auto Recorder
 
 on:
   schedule:
-    # Uruchamianie codziennie o 18:00 UTC (dostosuj godziny pod siebie)
-    - cron: '0 18 * * *'
-  workflow_dispatch: # Umożliwia ręczne uruchomienie z panelu GitHub
+    - cron: '0 6 * * *' # Codziennie o 18:00 UTC
+  workflow_dispatch:
 
 jobs:
   record:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout repo
         uses: actions/checkout@v4
 
       - name: Setup Node.js
@@ -20,7 +19,7 @@ jobs:
           node-version: 20
           cache: 'npm'
 
-      - name: Install dependencies & FFmpeg
+      - name: Install Dependencies & FFmpeg
         run: |
           sudo apt-get update
           sudo apt-get install -y ffmpeg
@@ -28,11 +27,11 @@ jobs:
 
       - name: Execute Recording Script
         env:
-          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
-          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
-          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
-          R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_BUCKET_NAME: "recordings"
           RADIO_STREAM_URL: ${{ secrets.RADIO_STREAM_URL }}
-          RECORD_DURATION_SECONDS: "3600" # 3600s = 60 min
+          RECORD_DURATION_SECONDS: "3600" # Czas nagrania w sekundach (3600s = 60 min)
+          RETENTION_DAYS: "7"              # Dni przechowywania nagrań
         run: npm run record
         
