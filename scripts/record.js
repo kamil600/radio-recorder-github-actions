@@ -4,18 +4,18 @@ import path from 'path';
 import { createClient } from '@supabase/supabase-js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const SUPABASE_SECRET_KEY = process.env.SUPABASE_SECRET_KEY;
 const BUCKET_NAME = process.env.SUPABASE_BUCKET_NAME || 'recordings';
 const RADIO_URL = process.env.RADIO_STREAM_URL;
 const DURATION_SECONDS = process.env.RECORD_DURATION_SECONDS || "3600";
 const RETENTION_DAYS = parseInt(process.env.RETENTION_DAYS || "7", 10);
 
-if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY || !RADIO_URL) {
+if (!SUPABASE_URL || !SUPABASE_SECRET_KEY || !RADIO_URL) {
   console.error("Błąd: Brak wymaganych zmiennych środowiskowych w GitHub Secrets!");
   process.exit(1);
 }
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+const supabase = createClient(SUPABASE_URL, SUPABASE_SECRET_KEY);
 
 async function cleanupOldRecordings() {
   console.log(`[Czyszczenie] Sprawdzam nagrania starsze niż ${RETENTION_DAYS} dni...`);
