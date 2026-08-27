@@ -31,7 +31,7 @@ jobs:
           SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
           SUPABASE_BUCKET_NAME: "recordings"
           RADIO_STREAM_URL: ${{ secrets.RADIO_STREAM_URL }}
-          RECORD_DURATION_SECONDS: "3600"
+          RECORD_DURATION_SECONDS: ${{ vars.RECORD_DURATION_SECONDS }}
           RETENTION_DAYS: "7"
         run: npm run record
  
