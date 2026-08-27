@@ -1,0 +1,13 @@
+{
+  "name": "radio-recorder",
+  "version": "1.0.0",
+  "description": "Automatyczne nagrywanie radia i udostępnianie plików przez panel WWW",
+  "main": "scripts/record.js",
+  "type": "module",
+  "scripts": {
+    "record": "node scripts/record.js"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.500.0"
+  }
+}
