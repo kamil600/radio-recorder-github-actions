@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Archiwum Radio Recorder</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-gray-100 min-h-screen p-6">
+  <div class="max-w-3xl mx-auto">
+    <header class="mb-8 border-b border-gray-800 pb-4">
+      <h1 class="text-3xl font-bold text-indigo-400">📻 Audycje Radiowe</h1>
+      <p class="text-gray-400 text-sm mt-1">Lista zarejestrowanych audycji internetowych</p>
+    </header>
+
+    <main id="app">
+      <div id="loading" class="text-center py-10 text-gray-500">Ładowanie audycji...</div>
+      <div id="list" class="space-y-4 hidden"></div>
+    </main>
+  </div>
+
+  <script>
+    // Ustaw tutaj publiczny URL swojego Bucketu z Cloudflare R2
+    const R2_PUBLIC_URL = "https://pub-YOUR-R2-PUBLIC-ID.r2.dev";
+
+    async function loadRecordings() {
+      const loadingEl = document.getElementById('loading');
+      const listEl = document.getElementById('list');
+
+      try {
+        const res = await fetch(`${R2_PUBLIC_URL}/manifest.json`);
+        if (!res.ok) throw new Error("Nie udało się pobrać listy nagrań.");
+        
+        const recordings = await res.json();
+        loadingEl.classList.add('hidden');
+        listEl.classList.remove('hidden');
+
+        if (recordings.length === 0) {
+          listEl.innerHTML = '<p class="text-gray-500">Brak zarejestrowanych nagrań.</p>';
+          return;
+        }
+
+        listEl.innerHTML = recordings.map(item => `
+          <div class="bg-gray-800 p-4 rounded-xl border border-gray-700 shadow-md flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <div class="font-semibold text-lg text-white">${item.fileName}</div>
+              <div class="text-sm text-gray-400">Data nagrania: ${item.date}</div>
+            </div>
+            <div class="flex items-center gap-3">
+              <audio controls preload="none" class="h-10">
+                <source src="${R2_PUBLIC_URL}/${item.url}" type="audio/mpeg">
+                Twoja przeglądarka nie wspiera odtwarzacza.
+              </audio>
+              <a href="${R2_PUBLIC_URL}/${item.url}" download class="bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-2 rounded-lg text-sm font-medium transition">
+                Pobierz
+              </a>
+            </div>
+          </div>
+        `).join('');
+
+      } catch (err) {
+        loadingEl.innerText = "Błąd: " + err.message;
+        loadingEl.classList.add('text-red-400');
+      }
+    }
+
+    loadRecordings();
+  </script>
+</body>
+</html>
