@@ -32,4 +32,3 @@ Automatyczny recorder audycji radiowych działający w chmurze za darmo.
 1. Podepnij repozytorium pod **Vercel** lub **Cloudflare Pages**.
 2. Jako **Root Directory** / **Build Output** wskaż katalog `public`.
 3. Po zdeployowaniu strona wyświetli listę wszystkich nagranych audycji z możliwością ich odsłuchania i pobrania!
-4. # radio-recorder-github-actions
