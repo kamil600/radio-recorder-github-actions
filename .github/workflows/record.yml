@@ -1,0 +1,38 @@
+name: Radio Auto Recorder
+
+on:
+  schedule:
+    # Uruchamianie codziennie o 18:00 UTC (dostosuj godziny pod siebie)
+    - cron: '0 18 * * *'
+  workflow_dispatch: # Umożliwia ręczne uruchomienie z panelu GitHub
+
+jobs:
+  record:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies & FFmpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+          npm ci
+
+      - name: Execute Recording Script
+        env:
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME }}
+          RADIO_STREAM_URL: ${{ secrets.RADIO_STREAM_URL }}
+          RECORD_DURATION_SECONDS: "3600" # 3600s = 60 min
+        run: npm run record
+        
