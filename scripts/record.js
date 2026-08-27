@@ -1,76 +1,92 @@
 import { execSync } from 'child_process';
-import { fs } from 'fs';
+import fs from 'fs';
 import path from 'path';
-import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
+import { createClient } from '@supabase/supabase-js';
 
-// Konfiguracja klientów i zmiennych środowiskowych
-const ACCOUNT_ID = process.env.R2_ACCOUNT_ID;
-const ACCESS_KEY_ID = process.env.R2_ACCESS_KEY_ID;
-const SECRET_ACCESS_KEY = process.env.R2_SECRET_ACCESS_KEY;
-const BUCKET_NAME = process.env.R2_BUCKET_NAME;
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const BUCKET_NAME = process.env.SUPABASE_BUCKET_NAME || 'recordings';
 const RADIO_URL = process.env.RADIO_STREAM_URL;
-const DURATION_SECONDS = process.env.RECORD_DURATION_SECONDS || "3600"; // domyślnie 1 godzina
+const DURATION_SECONDS = process.env.RECORD_DURATION_SECONDS || "3600";
+const RETENTION_DAYS = parseInt(process.env.RETENTION_DAYS || "7", 10);
 
-const s3Client = new S3Client({
-  region: 'auto',
-  endpoint: `https://${ACCOUNT_ID}.r2.cloudflarestorage.com`,
-  credentials: {
-    accessKeyId: ACCESS_KEY_ID,
-    secretAccessKey: SECRET_ACCESS_KEY,
-  },
-});
+if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY || !RADIO_URL) {
+  console.error("Błąd: Brak wymaganych zmiennych środowiskowych w GitHub Secrets!");
+  process.exit(1);
+}
+
+const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+async function cleanupOldRecordings() {
+  console.log(`[Czyszczenie] Sprawdzam nagrania starsze niż ${RETENTION_DAYS} dni...`);
+  
+  const { data: files, error } = await supabase.storage
+    .from(BUCKET_NAME)
+    .list('', { limit: 1000 });
+
+  if (error) {
+    console.error("Nie udało się pobrać listy plików do retencji:", error);
+    return;
+  }
+
+  const now = Date.now();
+  const maxAgeMs = RETENTION_DAYS * 24 * 60 * 60 * 1000;
+
+  const filesToDelete = files
+    .filter(f => f.name.endsWith('.mp3'))
+    .filter(f => {
+      const createdAt = new Date(f.created_at).getTime();
+      return (now - createdAt) > maxAgeMs;
+    })
+    .map(f => f.name);
+
+  if (filesToDelete.length > 0) {
+    console.log(`[Czyszczenie] Usuwam ${filesToDelete.length} przestarzałych plików:`, filesToDelete);
+    const { error: deleteError } = await supabase.storage
+      .from(BUCKET_NAME)
+      .remove(filesToDelete);
+
+    if (deleteError) {
+      console.error("Błąd podczas usuwania starych nagrań:", deleteError);
+    } else {
+      console.log("[Czyszczenie] Stare nagrania zostały pomyślnie usunięte.");
+    }
+  } else {
+    console.log("[Czyszczenie] Brak nagrań kwalifikujących się do usunięcia.");
+  }
+}
 
 async function main() {
-  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-  const dateStr = new Date().toLocaleDateString('pl-PL');
+  await cleanupOldRecordings();
+
+  const now = new Date();
+  const timestamp = now.toISOString().replace(/[:.]/g, '-');
   const fileName = `nagranie_${timestamp}.mp3`;
   const tempPath = path.join('/tmp', fileName);
 
-  console.log(`[1/4] Rozpoczynam nagrywanie strumienia: ${RADIO_URL} (${DURATION_SECONDS} s)...`);
-  
-  // Nagrywanie audio za pomocą ffmpeg bez rekompresji (c copy)
+  console.log(`[1/3] Rozpoczynam nagrywanie strumienia: ${RADIO_URL} (${DURATION_SECONDS} s)...`);
   execSync(`ffmpeg -y -i "${RADIO_URL}" -t ${DURATION_SECONDS} -c copy "${tempPath}"`, { stdio: 'inherit' });
 
-  console.log(`[2/4] Wysyłam nagranie ${fileName} do Cloudflare R2...`);
-  const fileStream = fs.createReadStream(tempPath);
-  await s3Client.send(new PutObjectCommand({
-    Bucket: BUCKET_NAME,
-    Key: `recordings/${fileName}`,
-    Body: fileStream,
-    ContentType: 'audio/mpeg',
-  }));
+  console.log(`[2/3] Odczytuję zapisany plik MP3...`);
+  const fileBuffer = fs.readFileSync(tempPath);
 
-  console.log(`[3/4] Aktualizuję manifest.json...`);
-  let manifest = [];
-  try {
-    const getManifestCmd = new GetObjectCommand({ Bucket: BUCKET_NAME, Key: 'manifest.json' });
-    const response = await s3Client.send(getManifestCmd);
-    const manifestData = await response.Body.transformToString();
-    manifest = JSON.parse(manifestData);
-  } catch (e) {
-    console.log("Brak istniejącego manifest.json, tworzę nowy.");
+  console.log(`[3/3] Wysyłam ${fileName} do Supabase Storage...`);
+  const { data, error } = await supabase.storage
+    .from(BUCKET_NAME)
+    .upload(fileName, fileBuffer, {
+      contentType: 'audio/mpeg',
+      upsert: true
+    });
+
+  if (error) {
+    throw error;
   }
 
-  // Dodanie nowego nagrania na początek listy
-  manifest.unshift({
-    id: timestamp,
-    date: dateStr,
-    fileName: fileName,
-    url: `recordings/${fileName}`,
-    createdAt: new Date().toISOString()
-  });
-
-  await s3Client.send(new PutObjectCommand({
-    Bucket: BUCKET_NAME,
-    Key: 'manifest.json',
-    Body: JSON.stringify(manifest, null, 2),
-    ContentType: 'application/json',
-  }));
-
-  console.log(`[4/4] Zakończono pomyślnie!`);
+  console.log("Sukces! Nowe nagranie zostało wrzucone:", data.path);
+  fs.unlinkSync(tempPath);
 }
 
 main().catch((err) => {
-  console.error("Błąd podczas procesowania:", err);
+  console.error("Błąd podczas przetwarzania:", err);
   process.exit(1);
 });
