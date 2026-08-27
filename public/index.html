@@ -27,13 +27,13 @@
   </div>
 
   <script>
-    // PODMIEŃ PONIŻSZE DANE Z PANELU SUPABASE (Project Settings > API)
+    // PODMIEŃ PONIŻSZE DANE Z PANELU SUPABASE (Project Settings > API Keys)
     const SUPABASE_URL = "https://TWÓJ_PROJECT_ID.supabase.co";
-    const SUPABASE_ANON_KEY = "TWÓJ_SUPABASE_ANON_KEY";
+    const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_TWÓJ_KEY";
     const BUCKET_NAME = "recordings";
 
     const { createClient } = supabase;
-    const _supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const _supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
 
     async function loadRecordings() {
       const loadingEl = document.getElementById('loading');
@@ -46,7 +46,7 @@
 
       try {
         if (SUPABASE_URL.includes("TWÓJ_PROJECT_ID")) {
-          throw new Error("Skonfiguruj zmienne SUPABASE_URL i SUPABASE_ANON_KEY w pliku public/index.html.");
+          throw new Error("Skonfiguruj zmienne SUPABASE_URL i SUPABASE_PUBLISHABLE_KEY w pliku public/index.html.");
         }
 
         const { data: files, error } = await _supabase.storage
