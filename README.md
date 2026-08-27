@@ -1,6 +1,6 @@
 # 📻 Radio Auto Recorder
 
-Automatyczny system nagrywania audycji radiowych działający w chmurze z wykorzystaniem **GitHub Actions** oraz **Supabase Storage**. Projekt jest w 100% darmowy i nie wymaga podawania karty płatniczej.
+Automatyczny system nagrywania audycji radiowych działający w chmurze z wykorzystaniem **GitHub Actions** oraz **Supabase Storage**.
 
 ## 🚀 Funkcje
 - **Automatyczne nagrywanie:** Cykliczne nagrywanie strumienia audio (MP3/AAC) przez ffmpeg uruchamiane w GitHub Actions.
