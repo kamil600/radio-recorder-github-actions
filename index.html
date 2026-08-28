@@ -5,102 +5,37 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Archiwum Nagrań Radiowych</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class'
+    }
+  </script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
-<body class="bg-gray-900 text-gray-100 min-h-screen p-6">
+<body class="bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 min-h-screen p-6 transition-colors duration-200">
   <div class="max-w-3xl mx-auto">
-    <header class="mb-8 border-b border-gray-800 pb-4 flex items-center justify-between">
+    <header class="mb-8 border-b border-gray-200 dark:border-gray-800 pb-4 flex items-center justify-between">
       <div>
-        <h1 class="text-3xl font-bold text-emerald-400">📻 Audycje Radiowe</h1>
-        <p class="text-gray-400 text-sm mt-1">Przechowywane na Supabase Storage</p>
+        <h1 class="text-3xl font-bold text-emerald-600 dark:text-emerald-400">📻 Audycje Radiowe</h1>
+        <p class="text-gray-600 dark:text-gray-400 text-sm mt-1">Przechowywane na Supabase Storage</p>
       </div>
-      <button onclick="loadRecordings()" class="bg-gray-800 hover:bg-gray-700 text-gray-300 px-3 py-1.5 rounded-lg text-sm border border-gray-700 transition">
-        🔄 Odśwież
-      </button>
+      <div class="flex items-center gap-2">
+        <button id="themeToggleBtn" class="bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 px-3 py-1.5 rounded-lg text-sm border border-gray-300 dark:border-gray-700 transition flex items-center gap-1.5 shadow-sm">
+          <span id="themeIcon">🌙</span> <span id="themeLabel">Ciemny</span>
+        </button>
+        <button id="refreshBtn" class="bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 px-3 py-1.5 rounded-lg text-sm border border-gray-300 dark:border-gray-700 transition shadow-sm">
+          🔄 Odśwież
+        </button>
+      </div>
     </header>
 
     <main id="app">
-      <div id="loading" class="text-center py-12 text-gray-500">Ładowanie audycji...</div>
-      <div id="error" class="hidden bg-red-900/30 border border-red-500/50 text-red-200 p-4 rounded-xl text-center my-4"></div>
+      <div id="loading" class="text-center py-12 text-gray-500 dark:text-gray-400">Ładowanie audycji...</div>
+      <div id="error" class="hidden bg-red-100 dark:bg-red-900/30 border border-red-400 dark:border-red-500/50 text-red-800 dark:text-red-200 p-4 rounded-xl text-center my-4"></div>
       <div id="list" class="space-y-4 hidden"></div>
     </main>
   </div>
 
-  <script>
-    // PODMIEŃ PONIŻSZE DANE Z PANELU SUPABASE (Project Settings > API Keys)
-    const SUPABASE_URL = "https://hydqdgnszhgfghrznncs.supabase.co";
-    const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_oF-LfxAX6YYE7Xz8BHPsgA_bMIhDMJn";
-    const BUCKET_NAME = "recordings";
-
-    const { createClient } = supabase;
-    const _supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
-
-    async function loadRecordings() {
-      const loadingEl = document.getElementById('loading');
-      const errorEl = document.getElementById('error');
-      const listEl = document.getElementById('list');
-
-      loadingEl.classList.remove('hidden');
-      errorEl.classList.add('hidden');
-      listEl.classList.add('hidden');
-
-      try {
-        if (SUPABASE_URL.includes("TWÓJ_PROJECT_ID")) {
-          throw new Error("Skonfiguruj zmienne SUPABASE_URL i SUPABASE_PUBLISHABLE_KEY w pliku public/index.html.");
-        }
-
-        const { data: files, error } = await _supabase.storage
-          .from(BUCKET_NAME)
-          .list('', {
-            sortBy: { column: 'created_at', order: 'desc' }
-          });
-
-        if (error) throw error;
-
-        loadingEl.classList.add('hidden');
-        listEl.classList.remove('hidden');
-
-        const mp3Files = files.filter(f => f.name.endsWith('.mp3'));
-
-        if (mp3Files.length === 0) {
-          listEl.innerHTML = '<div class="text-center py-8 text-gray-500">Brak zarejestrowanych nagrań w bazie.</div>';
-          return;
-        }
-
-        listEl.innerHTML = mp3Files.map(file => {
-          const { data: publicUrlData } = _supabase.storage
-            .from(BUCKET_NAME)
-            .getPublicUrl(file.name);
-
-          const dateStr = new Date(file.created_at).toLocaleString('pl-PL');
-
-          return `
-            <div class="bg-gray-800 p-4 rounded-xl border border-gray-700 shadow-md flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <div>
-                <div class="font-semibold text-lg text-white">${file.name}</div>
-                <div class="text-sm text-gray-400">Data nagrania: ${dateStr}</div>
-              </div>
-              <div class="flex items-center gap-3">
-                <audio controls preload="none" class="h-10">
-                  <source src="${publicUrlData ? publicUrlData.publicUrl : '#'}" type="audio/mpeg">
-                  Twoja przeglądarka nie wspiera odtwarzacza.
-                </audio>
-                <a href="${publicUrlData.publicUrl}" download target="_blank" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-2 rounded-lg text-sm font-medium transition">
-                  Pobierz
-                </a>
-              </div>
-            </div>
-          `;
-        }).join('');
-
-      } catch (err) {
-        loadingEl.classList.add('hidden');
-        errorEl.classList.remove('hidden');
-        errorEl.innerText = "Błąd: " + err.message;
-      }
-    }
-
-    loadRecordings();
-  </script>
+  <script src="app.js"></script>
 </body>
 </html>
