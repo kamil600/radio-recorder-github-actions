@@ -1,11 +1,12 @@
 {
-  "name": "radio-recorder-supabase",
+  "name": "radio-recorder-b2",
   "version": "1.0.0",
   "type": "module",
   "scripts": {
     "record": "node scripts/record.js"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.39.0"
+    "@aws-sdk/client-s3": "^3.500.0",
+    "@aws-sdk/s3-request-presigner": "^3.500.0"
   }
 }
