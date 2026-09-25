@@ -67,8 +67,7 @@ try {
     credentials: {
       accessKeyId: B2_KEY_ID,
       secretAccessKey: B2_APPLICATION_KEY
-    },
-    forcePathStyle: true
+    }
   });
 } catch (e) {
   console.error("Błąd inicjalizacji S3Client:", e);
