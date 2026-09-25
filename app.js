@@ -5,8 +5,8 @@ import { getSignedUrl } from 'https://esm.sh/@aws-sdk/s3-request-presigner?bundl
 const B2_ENDPOINT = "https://s3.eu-central-003.backblazeb2.com"; 
 const B2_REGION = "eu-central-003";
 const B2_BUCKET_NAME = "radio-recordings-7777";
-const B2_KEY_ID = "003bed35bf335290000000008";
-const B2_APPLICATION_KEY = "K003S6MBMQLA+B3i2lgZAOxTgAPKxTw";
+const B2_KEY_ID = "003bed35bf335290000000009";
+const B2_APPLICATION_KEY = "K003RnwSy6FvOUtog5NM+wQBFXXTARs";
 
 // --- ZARZĄDZANIE MOTYWEM (LIGHT / DARK MODE) ---
 function initTheme() {
