@@ -2,11 +2,12 @@ import { S3Client, ListObjectsV2Command, GetObjectCommand } from 'https://esm.sh
 import { getSignedUrl } from 'https://esm.sh/@aws-sdk/s3-request-presigner?bundle';
 
 // --- KONFIGURACJA BACKBLAZE B2 (S3 API) ---
-const B2_ENDPOINT = "https://s3.eu-central-003.backblazeb2.com"; 
+// Zalecenie: Dla bezpieczeństwa stwórz klucz Application Key ograniczony TYLKO do odczytu (Read-Only)
+const B2_ENDPOINT = "s3.eu-central-003.backblazeb2.com"; 
 const B2_REGION = "eu-central-003";
-const B2_BUCKET_NAME = "radio-recordings-github-actions";
-const B2_KEY_ID = "K003ExGUdyWTjxxd2rjL";
-const B2_APPLICATION_KEY = "K003S6MBMQL...";
+const B2_BUCKET_NAME = "radio-recordings-7777";
+const B2_KEY_ID = "K003ExGUdyWTjXxd2rjL5OYznuasexA";
+const B2_APPLICATION_KEY = "K003S6MBMQLA+B3i2lgZAOxTgAPKxTw";
 
 // --- ZARZĄDZANIE MOTYWEM (LIGHT / DARK MODE) ---
 function initTheme() {
@@ -40,7 +41,11 @@ function updateThemeUI(isDark) {
 // Inicjalizacja motywu i zdarzeń interfejsu
 initTheme();
 
+// --- INICJALIZACJA I REJESTRACJA ZDARZEŃ ---
 document.addEventListener('DOMContentLoaded', () => {
+  // Po załadowaniu DOM zaktualizuj wygląd przycisku (ikonkę i napis)
+  updateThemeUI(document.documentElement.classList.contains('dark'));
+  
   const themeToggleBtn = document.getElementById('themeToggleBtn');
   if (themeToggleBtn) {
     themeToggleBtn.addEventListener('click', toggleTheme);
@@ -50,11 +55,11 @@ document.addEventListener('DOMContentLoaded', () => {
   if (refreshBtn) {
     refreshBtn.addEventListener('click', loadRecordings);
   }
-
+  
   loadRecordings();
 });
 
-// Inicjalizacja klienta S3 w bloku try/catch
+// Inicjalizacja klienta S3
 let s3Client;
 try {
   s3Client = new S3Client({
@@ -83,7 +88,7 @@ async function loadRecordings() {
     if (!s3Client) {
       throw new Error("Nie udało się utworzyć klienta S3Client.");
     }
-
+    // 1. Pobranie listy obiektów z bucketa
     const command = new ListObjectsV2Command({
       Bucket: B2_BUCKET_NAME,
       MaxKeys: 1000
@@ -95,6 +100,7 @@ async function loadRecordings() {
     loadingEl.classList.add('hidden');
     listEl.classList.remove('hidden');
 
+    // 2. Filtrowanie plików MP3 oraz sortowanie od najnowszych
     const mp3Files = files
       .filter(f => f.Key.endsWith('.mp3'))
       .sort((a, b) => new Date(b.LastModified) - new Date(a.LastModified));
@@ -104,12 +110,14 @@ async function loadRecordings() {
       return;
     }
 
+    // 3. Generowanie podpisanych linków dostępowych i kart nagrań
     const cardsHtml = await Promise.all(mp3Files.map(async (file) => {
       const getCommand = new GetObjectCommand({
         Bucket: B2_BUCKET_NAME,
         Key: file.Key
       });
 
+      // Podpisany link ważny przez 1 godzinę (3600 sekund)
       const audioUrl = await getSignedUrl(s3Client, getCommand, { expiresIn: 3600 });
       const dateStr = new Date(file.LastModified).toLocaleString('pl-PL');
 
