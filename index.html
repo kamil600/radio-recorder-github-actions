@@ -10,14 +10,13 @@
       darkMode: 'class'
     }
   </script>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body class="bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 min-h-screen p-6 transition-colors duration-200">
   <div class="max-w-3xl mx-auto">
     <header class="mb-8 border-b border-gray-200 dark:border-gray-800 pb-4 flex items-center justify-between">
       <div>
         <h1 class="text-3xl font-bold text-emerald-600 dark:text-emerald-400">📻 Audycje Radiowe</h1>
-        <p class="text-gray-600 dark:text-gray-400 text-sm mt-1">Przechowywane na Supabase Storage</p>
+        <p class="text-gray-600 dark:text-gray-400 text-sm mt-1">Przechowywane na Backblaze B2 (S3 Storage)</p>
       </div>
       <div class="flex flex-col items-end gap-1.5">
         <span class="text-xs font-medium text-gray-500 dark:text-gray-400 self-start">Motyw:</span>
@@ -37,6 +36,6 @@
     </main>
   </div>
 
-  <script src="app.js"></script>
+  <script type="module" src="app.js"></script>
 </body>
 </html>
