@@ -87,12 +87,13 @@ async function main() {
     console.log(`[1/2] Nagrywanie strumienia: ${RADIO_STREAM_URL} (${RECORD_DURATION_SECONDS} s)...`);
     execSync(`ffmpeg -y -i "${RADIO_STREAM_URL}" -t ${RECORD_DURATION_SECONDS} -c copy "${tempPath}"`, { stdio: 'inherit' });
 
+    const fileBuffer = fs.readFileSync(filePath);
+          
     console.log(`[2/2] Wysyłanie ${fileName} do S3 Storage...`);
     await s3Client.send(new PutObjectCommand({
       Bucket: B2_BUCKET_NAME,
       Key: fileName,
-      Body: fs.createReadStream(tempPath),
-      ContentLength: fs.statSync(tempPath).size,
+      Body: fileBuffer,
       ContentType: 'audio/mpeg'
     }));
 
