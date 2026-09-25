@@ -1,89 +1,106 @@
 import { execSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
-import { createClient } from '@supabase/supabase-js';
+import { S3Client, 
+        PutObjectCommand,
+        ListObjectsV2Command, 
+        DeleteObjectsCommand} from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_SECRET_KEY = process.env.SUPABASE_SECRET_KEY;
-const BUCKET_NAME = process.env.SUPABASE_BUCKET_NAME || 'recordings';
+const B2_ENDPOINT = process.env.B2_ENDPOINT;
+const B2_REGION = process.env.B2_REGION;
+const B2_KEY_ID = process.env.B2_KEY_ID;
+const B2_APPLICATION_KEY = process.env.B2_APPLICATION_KEY;
+const B2_BUCKET_NAME = process.env.B2_BUCKET_NAME || 'recordings';
 const RADIO_URL = process.env.RADIO_STREAM_URL;
 const DURATION_SECONDS = process.env.RECORD_DURATION_SECONDS || "3600";
 const RETENTION_DAYS = parseInt(process.env.RETENTION_DAYS || "7", 10);
 
-if (!SUPABASE_URL || !SUPABASE_SECRET_KEY || !RADIO_URL) {
+if (!B2_ENDPOINT || !B2_REGION || !RADIO_URL || !B2_KEY_ID || !B2_APPLICATION_KEY) {
   console.error("Błąd: Brak wymaganych zmiennych środowiskowych w GitHub Secrets!");
   process.exit(1);
 }
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_SECRET_KEY);
+const s3Client = new S3Client({
+  endpoint: B2_ENDPOINT,
+  region: B2_REGION,
+  credentials: {
+    accessKeyId: B2_KEY_ID,
+    secretAccessKey: B2_APPLICATION_KEY
+  }
+});
 
 async function cleanupOldRecordings() {
   console.log(`[Czyszczenie] Sprawdzam nagrania starsze niż ${RETENTION_DAYS} dni...`);
-  
-  const { data: files, error } = await supabase.storage
-    .from(BUCKET_NAME)
-    .list('', { limit: 1000 });
 
-  if (error) {
-    console.error("Nie udało się pobrać listy plików do retencji:", error);
-    return;
-  }
+  try {
+    // 1. Pobranie listy plików bezpośrednio z S3
+    const { Contents } = await s3Client.send(new ListObjectsV2Command({
+      Bucket: BUCKET_NAME,
+      MaxKeys: 1000
+    }));
 
-  const now = Date.now();
-  const maxAgeMs = RETENTION_DAYS * 24 * 60 * 60 * 1000;
-
-  const filesToDelete = files
-    .filter(f => f.name.endsWith('.mp3'))
-    .filter(f => {
-      const createdAt = new Date(f.created_at).getTime();
-      return (now - createdAt) > maxAgeMs;
-    })
-    .map(f => f.name);
-
-  if (filesToDelete.length > 0) {
-    console.log(`[Czyszczenie] Usuwam ${filesToDelete.length} przestarzałych plików:`, filesToDelete);
-    const { error: deleteError } = await supabase.storage
-      .from(BUCKET_NAME)
-      .remove(filesToDelete);
-
-    if (deleteError) {
-      console.error("Błąd podczas usuwania starych nagrań:", deleteError);
-    } else {
-      console.log("[Czyszczenie] Stare nagrania zostały pomyślnie usunięte.");
+    if (!Contents || Contents.length === 0) {
+      console.log("[Czyszczenie] Bucket jest pusty.");
+      return;
     }
-  } else {
-    console.log("[Czyszczenie] Brak nagrań kwalifikujących się do usunięcia.");
+
+    const now = Date.now();
+    const maxAgeMs = RETENTION_DAYS * 24 * 60 * 60 * 1000;
+
+    // 2. Filtrowanie przestarzałych plików MP3
+    const filesToDelete = Contents
+      .filter(item => item.Key.endsWith('.mp3'))
+      .filter(item => (now - new Date(item.LastModified).getTime()) > maxAgeMs)
+      .map(item => item.Key);
+
+    if (filesToDelete.length === 0) {
+      console.log("[Czyszczenie] Brak nagrań kwalifikujących się do usunięcia.");
+      return;
+    }
+
+    // 3. Masowe usunięcie plików
+    console.log(`[Czyszczenie] Usuwam ${filesToDelete.length} przestarzałych plików:`, filesToDelete);
+
+    await s3Client.send(new DeleteObjectsCommand({
+      Bucket: BUCKET_NAME,
+      Delete: {
+        Objects: filesToDelete.map(Key => ({ Key }))
+      }
+    }));
+
+    console.log("[Czyszczenie] Stare nagrania zostały pomyślnie usunięte.");
+
+  } catch (error) {
+    console.error("[Czyszczenie] Wystąpił błąd podczas czyszczenia nagrań:", error);
   }
 }
 
 async function main() {
   await cleanupOldRecordings();
 
-  const now = new Date();
-  const timestamp = now.toISOString().replace(/[:.]/g, '-');
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
   const fileName = `nagranie_${timestamp}.mp3`;
   const tempPath = path.join('/tmp', fileName);
 
-  console.log(`[1/3] Rozpoczynam nagrywanie strumienia: ${RADIO_URL} (${DURATION_SECONDS} s)...`);
-  execSync(`ffmpeg -y -i "${RADIO_URL}" -t ${DURATION_SECONDS} -c copy "${tempPath}"`, { stdio: 'inherit' });
+  try {
+    console.log(`[1/2] Nagrywanie strumienia: ${RADIO_URL} (${DURATION_SECONDS} s)...`);
+    execSync(`ffmpeg -y -i "${RADIO_URL}" -t ${DURATION_SECONDS} -c copy "${tempPath}"`, { stdio: 'inherit' });
 
-  console.log(`[2/3] Odczytuję zapisany plik MP3...`);
-  const fileBuffer = fs.readFileSync(tempPath);
+    console.log(`[2/2] Wysyłanie ${fileName} do S3 Storage...`);
+    await s3Client.send(new PutObjectCommand({
+      Bucket: BUCKET_NAME,
+      Key: fileName,
+      Body: fs.createReadStream(tempPath),
+      ContentType: 'audio/mpeg'
+    }));
 
-  console.log(`[3/3] Wysyłam ${fileName} do Supabase Storage...`);
-  const { data, error } = await supabase.storage
-    .from(BUCKET_NAME)
-    .upload(fileName, fileBuffer, {
-      contentType: 'audio/mpeg',
-      upsert: true
-    });
-
-  if (error) {
-    throw error;
+    console.log("Sukces! Nowe nagranie zostało wrzucone:", fileName);
+  } finally {
+    if (fs.existsSync(tempPath)) {
+      fs.unlinkSync(tempPath);
+    }
   }
-
-  console.log("Sukces! Nowe nagranie zostało wrzucone:", data.path);
-  fs.unlinkSync(tempPath);
 }
 
 main().catch((err) => {
