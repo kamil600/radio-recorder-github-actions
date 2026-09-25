@@ -12,11 +12,11 @@ const B2_REGION = process.env.B2_REGION;
 const B2_KEY_ID = process.env.B2_KEY_ID;
 const B2_APPLICATION_KEY = process.env.B2_APPLICATION_KEY;
 const B2_BUCKET_NAME = process.env.B2_BUCKET_NAME || 'recordings';
-const RADIO_URL = process.env.RADIO_STREAM_URL;
-const DURATION_SECONDS = process.env.RECORD_DURATION_SECONDS || "3600";
+const RADIO_STREAM_URL = process.env.RADIO_STREAM_URL;
+const RECORD_DURATION_SECONDS = process.env.RECORD_DURATION_SECONDS || "3600";
 const RETENTION_DAYS = parseInt(process.env.RETENTION_DAYS || "7", 10);
 
-if (!B2_ENDPOINT || !B2_REGION || !RADIO_URL || !B2_KEY_ID || !B2_APPLICATION_KEY) {
+if (!B2_ENDPOINT || !B2_REGION || !RADIO_STREAM_URL || !B2_KEY_ID || !B2_APPLICATION_KEY) {
   console.error("Błąd: Brak wymaganych zmiennych środowiskowych w GitHub Secrets!");
   process.exit(1);
 }
@@ -36,7 +36,7 @@ async function cleanupOldRecordings() {
   try {
     // 1. Pobranie listy plików bezpośrednio z S3
     const { Contents } = await s3Client.send(new ListObjectsV2Command({
-      Bucket: BUCKET_NAME,
+      Bucket: B2_BUCKET_NAME,
       MaxKeys: 1000
     }));
 
@@ -63,7 +63,7 @@ async function cleanupOldRecordings() {
     console.log(`[Czyszczenie] Usuwam ${filesToDelete.length} przestarzałych plików:`, filesToDelete);
 
     await s3Client.send(new DeleteObjectsCommand({
-      Bucket: BUCKET_NAME,
+      Bucket: B2_BUCKET_NAME,
       Delete: {
         Objects: filesToDelete.map(Key => ({ Key }))
       }
@@ -84,12 +84,12 @@ async function main() {
   const tempPath = path.join('/tmp', fileName);
 
   try {
-    console.log(`[1/2] Nagrywanie strumienia: ${RADIO_URL} (${DURATION_SECONDS} s)...`);
-    execSync(`ffmpeg -y -i "${RADIO_URL}" -t ${DURATION_SECONDS} -c copy "${tempPath}"`, { stdio: 'inherit' });
+    console.log(`[1/2] Nagrywanie strumienia: ${RADIO_STREAM_URL} (${RECORD_DURATION_SECONDS} s)...`);
+    execSync(`ffmpeg -y -i "${RADIO_STREAM_URL}" -t ${RECORD_DURATION_SECONDS} -c copy "${tempPath}"`, { stdio: 'inherit' });
 
     console.log(`[2/2] Wysyłanie ${fileName} do S3 Storage...`);
     await s3Client.send(new PutObjectCommand({
-      Bucket: BUCKET_NAME,
+      Bucket: B2_BUCKET_NAME,
       Key: fileName,
       Body: fs.createReadStream(tempPath),
       ContentType: 'audio/mpeg'
