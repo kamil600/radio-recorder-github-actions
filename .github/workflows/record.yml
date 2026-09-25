@@ -25,10 +25,12 @@ jobs:
 
       - name: Execute Recording Script
         env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
-          SUPABASE_BUCKET_NAME: "recordings"
-          RADIO_STREAM_URL: ${{ secrets.RADIO_STREAM_URL }}
+          B2_ENDPOINT: ${{ vars.B2_KEY_ID }}
+          B2_REGION: ${{ vars.B2_KEY_ID }}
+          B2_BUCKET_NAME: ${{ vars.B2_BUCKET_NAME }}
+          B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
+          B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+          RADIO_STREAM_URL: ${{ vars.RADIO_STREAM_URL }}
           RECORD_DURATION_SECONDS: ${{ vars.RECORD_DURATION_SECONDS }}
           RETENTION_DAYS: "7"
         run: npm run record
