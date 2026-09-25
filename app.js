@@ -2,7 +2,7 @@ import { S3Client, ListObjectsV2Command, GetObjectCommand } from 'https://esm.sh
 import { getSignedUrl } from 'https://esm.sh/@aws-sdk/s3-request-presigner?bundle';
 
 // --- KONFIGURACJA BACKBLAZE B2 (S3 API) ---
-const B2_ENDPOINT = "s3.eu-central-003.backblazeb2.com"; 
+const B2_ENDPOINT = "https://s3.eu-central-003.backblazeb2.com"; 
 const B2_REGION = "eu-central-003";
 const B2_BUCKET_NAME = "radio-recordings-7777";
 const B2_KEY_ID = "K003ExGUdyWTjXxd2rjL5OYznuasexA";
