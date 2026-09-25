@@ -92,7 +92,7 @@ async function main() {
       Bucket: B2_BUCKET_NAME,
       Key: fileName,
       Body: fs.createReadStream(tempPath),
-      ContentLength: fs.statSync(tempPath),
+      ContentLength: fs.statSync(tempPath).size,
       ContentType: 'audio/mpeg'
     }));
 
