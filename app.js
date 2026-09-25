@@ -2,7 +2,6 @@ import { S3Client, ListObjectsV2Command, GetObjectCommand } from 'https://esm.sh
 import { getSignedUrl } from 'https://esm.sh/@aws-sdk/s3-request-presigner?bundle';
 
 // --- KONFIGURACJA BACKBLAZE B2 (S3 API) ---
-// Zalecenie: Dla bezpieczeństwa stwórz klucz Application Key ograniczony TYLKO do odczytu (Read-Only)
 const B2_ENDPOINT = "s3.eu-central-003.backblazeb2.com"; 
 const B2_REGION = "eu-central-003";
 const B2_BUCKET_NAME = "radio-recordings-7777";
