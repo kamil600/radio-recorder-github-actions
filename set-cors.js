@@ -19,7 +19,7 @@ async function applyCors() {
           {
             AllowedHeaders: ["*"],
             AllowedMethods: ["GET", "HEAD"],
-            AllowedOrigins: ["*"],
+            AllowedOrigins: ["https://kamil600.github.io"],
             ExposeHeaders: ["ETag"]
           }
         ]
