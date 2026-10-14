@@ -8,6 +8,43 @@ const B2_BUCKET_NAME = "radio-recordings-7777";
 const B2_KEY_ID = "003bed35bf335290000000009";
 const B2_APPLICATION_KEY = "K003RnwSy6FvOUtog5NM+wQBFXXTARs";
 
+// --- FORMATOWANIE NAZWY PLIKU ---
+// Przekształca nazwę pliku (lub datę modyfikacji) w format: "[dzień tygodnia] [data dd.mm.rrrr], [godzina:minuta]"
+function formatRecordingName(fileKey, lastModified) {
+  let date;
+
+  // Próba odczytania daty z nazwy pliku ISO: nagranie_YYYY-MM-DDTHH-mm-ss-sssZ.mp3
+  const isoMatch = fileKey.match(/nagranie_(\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2})/);
+  if (isoMatch) {
+    const formattedIso = isoMatch[1].replace(
+      /(\d{4}-\d{2}-\d{2})T(\d{2})-(\d{2})-(\d{2})/,
+      '$1T$2:$3:$4Z'
+    );
+    date = new Date(formattedIso);
+  } else {
+    // Fallback do daty ostatniej modyfikacji pliku z B2
+    date = new Date(lastModified);
+  }
+
+  if (isNaN(date.getTime())) {
+    return fileKey; // Zwróć surowy klucz, jeśli data nie da się sparsować
+  }
+
+  // Dzień tygodnia (słownie, małą literą)
+  const dayName = date.toLocaleDateString('pl-PL', { weekday: 'long' });
+
+  // Data w formacie dd.mm.rrrr
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const year = date.getFullYear();
+
+  // Czas rozpoczęcia nagrywania hh:mm
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+
+  return `${dayName} ${day}.${month}.${year}, ${hours}:${minutes}`;
+}
+
 // --- ZARZĄDZANIE MOTYWEM (LIGHT / DARK MODE) ---
 function initTheme() {
   const savedTheme = localStorage.getItem('theme');
@@ -118,13 +155,13 @@ async function loadRecordings() {
 
       // Podpisany link ważny przez 1 godzinę (3600 sekund)
       const audioUrl = await getSignedUrl(s3Client, getCommand, { expiresIn: 3600 });
-      const dateStr = new Date(file.LastModified).toLocaleString('pl-PL');
+      const displayName = formatRecordingName(file.Key, file.LastModified);
 
       return `
         <div class="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm md:shadow-md flex flex-col md:flex-row md:items-center justify-between gap-4 transition-colors duration-200">
           <div>
-            <div class="font-semibold text-lg text-gray-900 dark:text-white">${file.Key}</div>
-            <div class="text-sm text-gray-500 dark:text-gray-400">Data nagrania: ${dateStr}</div>
+            <div class="font-semibold text-lg text-gray-900 dark:text-white capitalize">${displayName}</div>
+            <div class="text-sm text-gray-500 dark:text-gray-400">Plik: ${file.Key}</div>
           </div>
           <div class="flex items-center gap-3">
             <audio controls preload="none" class="h-10">
