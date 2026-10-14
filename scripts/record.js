@@ -85,7 +85,10 @@ async function main() {
 
   try {
     console.log(`[1/2] Nagrywanie strumienia: ${RADIO_STREAM_URL} (${RECORD_DURATION_SECONDS} s)...`);
-    execSync(`ffmpeg -y -i "${RADIO_STREAM_URL}" -t ${RECORD_DURATION_SECONDS} -c copy "${tempPath}"`, { stdio: 'inherit' });
+    
+    const ffmpegCommand = `ffmpeg -y -reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 10 -i "${RADIO_STREAM_URL}" -t ${RECORD_DURATION_SECONDS} -c copy "${tempPath}"`;
+    
+    execSync(ffmpegCommand, { stdio: 'inherit' });
 
     const fileBuffer = fs.readFileSync(tempPath);
           
