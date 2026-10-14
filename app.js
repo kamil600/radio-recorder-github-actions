@@ -30,19 +30,14 @@ function formatRecordingName(fileKey, lastModified) {
     return fileKey; // Zwróć surowy klucz, jeśli data nie da się sparsować
   }
 
-  // Dzień tygodnia (słownie, małą literą)
-  const dayName = date.toLocaleDateString('pl-PL', { weekday: 'long' });
-
-  // Data w formacie dd.mm.rrrr
-  const day = String(date.getDate()).padStart(2, '0');
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const year = date.getFullYear();
-
-  // Czas rozpoczęcia nagrywania hh:mm
-  const hours = String(date.getHours()).padStart(2, '0');
-  const minutes = String(date.getMinutes()).padStart(2, '0');
-
-  return `${dayName} ${day}.${month}.${year}, ${hours}:${minutes}`;
+  return date.toLocaleDateString('pl-PL', {
+    weekday: 'long',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
 }
 
 // --- ZARZĄDZANIE MOTYWEM (LIGHT / DARK MODE) ---
