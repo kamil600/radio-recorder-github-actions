@@ -1,4 +1,4 @@
-# Radio Recorder (Backblaze B2)
+# Radio Recorder
 
 Aplikacja do automatycznego nagrywania strumieni radiowych za pomocą FFmpeg i zapisywania plików w chmurze Backblaze B2 (przez S3 API). Projekt zawiera skrypt wykonawczy Node.js oraz frontendowy odtwarzacz webowy z obsługą ciemnego motywu.
 
@@ -11,8 +11,8 @@ Aplikacja do automatycznego nagrywania strumieni radiowych za pomocą FFmpeg i z
 
 ## Wymagania
 
-* Node.js (wersja 18+)
-* FFmpeg zainstalowany w systemie (domyślnie dostępny na runnerach GitHub Actions)
+* Node.js
+* FFmpeg
 * Konto Backblaze B2 (prywatny bucket + Application Key)
 
 ## Zmienne środowiskowe
@@ -29,18 +29,3 @@ Skrypt `scripts/record.js` wymaga następujących zmiennych środowiskowych:
 | `B2_BUCKET_NAME` | Nazwa bucketa B2 | `moje-nagrania` |
 | `B2_KEY_ID` | Key ID z Backblaze | `004...` |
 | `B2_APPLICATION_KEY` | Application Key z Backblaze | `K004...` |
-
-## Instalacja i uruchomienie
-
-1. Zainstaluj zależności:
-   ```bash
-   npm install
-   ```
-
-2. Uruchom skrypt nagrywający:
-   ```bash
-   npm run record
-   ```
-
-3. Podgląd odtwarzacza:
-   Otwórz plik `index.html` w przeglądarce (lub wystaw go przez GitHub Pages / Vercel).
