@@ -2,11 +2,14 @@ import { S3Client, ListObjectsV2Command, GetObjectCommand } from 'https://esm.sh
 import { getSignedUrl } from 'https://esm.sh/@aws-sdk/s3-request-presigner?bundle';
 
 // --- KONFIGURACJA BACKBLAZE B2 (S3 API) ---
-const B2_ENDPOINT = "https://s3.eu-central-003.backblazeb2.com"; 
-const B2_REGION = "eu-central-003";
-const B2_BUCKET_NAME = "radio-recordings-7777";
-const B2_KEY_ID = "003bed35bf335290000000009";
-const B2_APPLICATION_KEY = "K003RnwSy6FvOUtog5NM+wQBFXXTARs";
+const CONFIG = {
+  endpoint: "https://s3.eu-central-003.backblazeb2.com",
+  region: "eu-central-003",
+  bucketName: "radio-recordings-7777",
+  keyId: "003bed35bf335290000000009",
+  applicationKey: "K003RnwSy6FvOUtog5NM+wQBFXXTARs",
+  urlExpirationSeconds: 3600
+};
 
 // --- FORMATOWANIE NAZWY PLIKU ---
 // Przekształca nazwę pliku (lub datę modyfikacji) w format: "[dzień tygodnia] [data dd.mm.rrrr], [godzina:minuta]"
@@ -69,7 +72,7 @@ function updateThemeUI(isDark) {
   }
 }
 
-// Inicjalizacja motywu i zdarzeń interfejsu
+// Inicjalizacja motywu
 initTheme();
 
 // --- INICJALIZACJA I REJESTRACJA ZDARZEŃ ---
@@ -94,11 +97,11 @@ document.addEventListener('DOMContentLoaded', () => {
 let s3Client;
 try {
   s3Client = new S3Client({
-    endpoint: B2_ENDPOINT,
-    region: B2_REGION,
+    endpoint: CONFIG.endpoint,
+    region: CONFIG.region,
     credentials: {
-      accessKeyId: B2_KEY_ID,
-      secretAccessKey: B2_APPLICATION_KEY
+      accessKeyId: CONFIG.keyId,
+      secretAccessKey: CONFIG.applicationKey
     }
   });
 } catch (e) {
@@ -111,9 +114,9 @@ async function loadRecordings() {
   const errorEl = document.getElementById('error');
   const listEl = document.getElementById('list');
 
-  loadingEl.classList.remove('hidden');
-  errorEl.classList.add('hidden');
-  listEl.classList.add('hidden');
+  loadingEl?.classList.remove('hidden');
+  errorEl?.classList.add('hidden');
+  listEl?.classList.add('hidden');
 
   try {
     if (!s3Client) {
@@ -121,35 +124,40 @@ async function loadRecordings() {
     }
     // 1. Pobranie listy obiektów z bucketa
     const command = new ListObjectsV2Command({
-      Bucket: B2_BUCKET_NAME,
+      Bucket: CONFIG.bucketName,
       MaxKeys: 1000
     });
 
     const response = await s3Client.send(command);
     const files = response.Contents || [];
 
-    loadingEl.classList.add('hidden');
-    listEl.classList.remove('hidden');
+    loadingEl?.classList.add('hidden');
+    listEl?.classList.remove('hidden');
 
     // 2. Filtrowanie plików MP3 oraz sortowanie od najnowszych
     const mp3Files = files
       .filter(f => f.Key.endsWith('.mp3'))
       .sort((a, b) => new Date(b.LastModified) - new Date(a.LastModified));
 
+    if (!listEl) return;
+
     if (mp3Files.length === 0) {
-      listEl.innerHTML = '<div class="text-center py-8 text-gray-500 dark:text-gray-400">Brak zarejestrowanych nagrań w bazie.</div>';
+      const emptyNotice = document.createElement('div');
+      emptyNotice.className = 'text-center py-8 text-gray-500 dark:text-gray-400';
+      emptyNotice.textContent = 'Brak zarejestrowanych nagrań w bazie.';
+      listEl.replaceChildren(emptyNotice);
       return;
     }
 
     // 3. Generowanie podpisanych linków dostępowych i kart nagrań
     const cardsHtml = await Promise.all(mp3Files.map(async (file) => {
       const getCommand = new GetObjectCommand({
-        Bucket: B2_BUCKET_NAME,
+        Bucket: CONFIG.bucketName,
         Key: file.Key
       });
 
       // Podpisany link ważny przez 1 godzinę (3600 sekund)
-      const audioUrl = await getSignedUrl(s3Client, getCommand, { expiresIn: 3600 });
+      const audioUrl = await getSignedUrl(s3Client, getCommand, { expiresIn: CONFIG.urlExpirationSeconds });
       const displayName = formatRecordingName(file.Key, file.LastModified);
 
       return `
@@ -171,11 +179,15 @@ async function loadRecordings() {
       `;
     }));
 
-    listEl.innerHTML = cardsHtml.join('');
+    // Konwersja szablonów HTML na fragment DOM i podmiana zawartości poprzez replaceChildren()
+    const fragment = document.createRange().createContextualFragment(cardsHtml.join(''));
+    listEl.replaceChildren(fragment);
 
   } catch (err) {
-    loadingEl.classList.add('hidden');
-    errorEl.classList.remove('hidden');
-    errorEl.innerText = "Błąd: " + err.message;
+    loadingEl?.classList.add('hidden');
+    if (errorEl) {
+      errorEl.classList.remove('hidden');
+      errorEl.innerText = "Błąd: " + err.message;
+    }
   }
 }
